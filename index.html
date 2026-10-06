@@ -21,6 +21,10 @@
   <!-- Tabler icons: one class per weather type (ti-sun, ti-cloud-rain, ...) -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3/dist/tabler-icons.min.css">
   <link rel="stylesheet" href="style.css">
+  <!-- Makes the app installable: name, icons and colours for the home-screen version -->
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icons/icon-180.png">
+  <meta name="apple-mobile-web-app-title" content="Skyline">
 </head>
 <body>
   <header class="site-header">
@@ -41,7 +45,12 @@
     <!-- A real <form> means Enter submits the search for free, no extra key handling needed -->
     <form class="search" id="search-form" role="search">
       <label class="sr-only" for="city-input">City name</label>
-      <input id="city-input" name="city" type="text" placeholder="Cape Town" autocomplete="off" required>
+      <!-- Combobox pattern: screen readers announce the suggestion list and which option is highlighted -->
+      <div class="search-field">
+        <input id="city-input" name="city" type="text" placeholder="Cape Town" autocomplete="off" required
+               role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="suggestions">
+        <ul class="suggestions" id="suggestions" role="listbox" aria-label="Matching places" hidden></ul>
+      </div>
       <button class="locate" id="locate-button" type="button" aria-label="Use my location"><i class="ti ti-current-location" aria-hidden="true"></i></button>
       <button class="button" type="submit"><i class="ti ti-search" aria-hidden="true"></i>Search</button>
     </form>
@@ -102,6 +111,6 @@
     <p>Data from <a href="https://open-meteo.com/">Open-Meteo</a> · <a href="https://github.com/tahir-ismail/skyline-weather">View code</a> · Built by <a href="https://tahir-ismail.github.io/">Tahir Ismail</a></p>
   </footer>
 
-  <script src="app.js"></script>
+  <script type="module" src="app.js"></script>
 </body>
 </html>

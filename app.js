@@ -1,5 +1,10 @@
 // Skyline Weather: find a place -> fetch its weather and air quality -> draw it.
-// Data is always fetched in metric and converted on screen, so the °C/°F switch is instant.
+// The pure logic (scores, levels, formatting) lives in logic.js so it can be unit tested.
+import {
+  describeWeather, formatTemp as formatTempIn, formatWind as formatWindIn, formatWeekday,
+  getNext24Hours, getSunPosition, getRunningScore, getRainToday, uvLevel, aqiLevel,
+  placeRegion, escapeHtml,
+} from './logic.js';
 
 const GEOCODING_URL = 'https://geocoding-api.open-meteo.com/v1/search';
 const FORECAST_URL = 'https://api.open-meteo.com/v1/forecast';
@@ -15,9 +20,13 @@ const state = {
   air: null,
 };
 
+// Search suggestions: the current list, the highlighted one, and the pending request.
+const suggest = { places: [], active: -1, timer: null, controller: null };
+
 const els = {
   form: document.getElementById('search-form'),
   input: document.getElementById('city-input'),
+  suggestions: document.getElementById('suggestions'),
   locateButton: document.getElementById('locate-button'),
   status: document.getElementById('status'),
   skeleton: document.getElementById('skeleton'),
@@ -44,52 +53,24 @@ const els = {
 // The result sections, shown and hidden together.
 const resultSections = [els.current, els.hourly, els.forecast, els.today];
 
-// WMO weather codes used by Open-Meteo -> label, Tabler icon and colour scheme ("sky").
-const WEATHER_CODES = {
-  0: { label: 'Clear sky', icon: 'ti-sun', sky: 'clear' },
-  1: { label: 'Mainly clear', icon: 'ti-sun', sky: 'clear' },
-  2: { label: 'Partly cloudy', icon: 'ti-cloud', sky: 'cloudy' },
-  3: { label: 'Overcast', icon: 'ti-cloud', sky: 'cloudy' },
-  45: { label: 'Fog', icon: 'ti-mist', sky: 'fog' },
-  48: { label: 'Freezing fog', icon: 'ti-mist', sky: 'fog' },
-  51: { label: 'Light drizzle', icon: 'ti-cloud-rain', sky: 'rain' },
-  53: { label: 'Drizzle', icon: 'ti-cloud-rain', sky: 'rain' },
-  55: { label: 'Heavy drizzle', icon: 'ti-cloud-rain', sky: 'rain' },
-  56: { label: 'Freezing drizzle', icon: 'ti-cloud-rain', sky: 'rain' },
-  57: { label: 'Freezing drizzle', icon: 'ti-cloud-rain', sky: 'rain' },
-  61: { label: 'Light rain', icon: 'ti-cloud-rain', sky: 'rain' },
-  63: { label: 'Rain', icon: 'ti-cloud-rain', sky: 'rain' },
-  65: { label: 'Heavy rain', icon: 'ti-cloud-rain', sky: 'rain' },
-  66: { label: 'Freezing rain', icon: 'ti-cloud-rain', sky: 'rain' },
-  67: { label: 'Freezing rain', icon: 'ti-cloud-rain', sky: 'rain' },
-  71: { label: 'Light snow', icon: 'ti-snowflake', sky: 'snow' },
-  73: { label: 'Snow', icon: 'ti-snowflake', sky: 'snow' },
-  75: { label: 'Heavy snow', icon: 'ti-snowflake', sky: 'snow' },
-  77: { label: 'Snow grains', icon: 'ti-snowflake', sky: 'snow' },
-  80: { label: 'Light showers', icon: 'ti-cloud-rain', sky: 'rain' },
-  81: { label: 'Showers', icon: 'ti-cloud-rain', sky: 'rain' },
-  82: { label: 'Heavy showers', icon: 'ti-cloud-rain', sky: 'rain' },
-  85: { label: 'Snow showers', icon: 'ti-snowflake', sky: 'snow' },
-  86: { label: 'Heavy snow showers', icon: 'ti-snowflake', sky: 'snow' },
-  95: { label: 'Thunderstorm', icon: 'ti-cloud-storm', sky: 'storm' },
-  96: { label: 'Thunderstorm with hail', icon: 'ti-cloud-storm', sky: 'storm' },
-  99: { label: 'Thunderstorm with hail', icon: 'ti-cloud-storm', sky: 'storm' },
-};
-
 
 // ---------- API ----------
 
-// Finds a city's coordinates. Returns null if the city doesn't exist.
-async function geocodeCity(name) {
-  const params = new URLSearchParams({ name, count: 1, language: 'en', format: 'json' });
-  const response = await fetch(`${GEOCODING_URL}?${params}`);
+// Finds up to `count` places matching a name. `signal` lets an outdated search be cancelled.
+async function searchPlaces(name, count = 1, signal) {
+  const params = new URLSearchParams({ name, count, language: 'en', format: 'json' });
+  const response = await fetch(`${GEOCODING_URL}?${params}`, { signal });
   if (!response.ok) throw new Error(`Geocoding failed: ${response.status}`);
 
   const data = await response.json();
-  const match = data.results?.[0]; // no "results" key at all when nothing matches
-  return match
-    ? { name: match.name, country: match.country, latitude: match.latitude, longitude: match.longitude }
-    : null;
+  return (data.results ?? []).map((r) => ({ // no "results" key at all when nothing matches
+    name: r.name, region: r.admin1, country: r.country, latitude: r.latitude, longitude: r.longitude,
+  }));
+}
+
+// Finds the best match for a city name, or null if there isn't one.
+async function geocodeCity(name) {
+  return (await searchPlaces(name, 1))[0] ?? null;
 }
 
 // Turns coordinates into a place name; falls back to "Your location" if the lookup fails.
@@ -126,12 +107,7 @@ async function getForecast(latitude, longitude) {
 // Gets air quality. Returns null on failure so the rest of the page still loads.
 async function getAirQuality(latitude, longitude) {
   try {
-    const params = new URLSearchParams({
-      latitude,
-      longitude,
-      current: 'european_aqi',
-      timezone: 'auto',
-    });
+    const params = new URLSearchParams({ latitude, longitude, current: 'european_aqi', timezone: 'auto' });
     const response = await fetch(`${AIR_QUALITY_URL}?${params}`);
     return response.ok ? (await response.json()).current : null;
   } catch (e) {
@@ -146,19 +122,13 @@ function getBrowserPosition() {
   });
 }
 
-// Turns a weather code into a label, icon and colour scheme; night gets its own.
-function describeWeather(code, isDay = true) {
-  const look = WEATHER_CODES[code] ?? { label: 'Unknown', icon: 'ti-question-mark', sky: 'cloudy' };
-  if (isDay) return look;
-  return { ...look, icon: look.icon === 'ti-sun' ? 'ti-moon' : look.icon, sky: 'night' };
-}
-
 
 // ---------- Search and loading ----------
 
 // Handles the search form (button click or Enter).
 async function handleSearch(event) {
   event.preventDefault(); // stop the page reloading
+  closeSuggestions();
   const city = els.input.value.trim();
   if (city) await searchCity(city);
 }
@@ -209,9 +179,96 @@ async function loadPlace(place) {
     els.input.value = place.name;
     saveSetting('lastPlace', JSON.stringify(place));
     render(true);
+    if (!navigator.onLine) showStatus("You're offline. Showing the last saved forecast.");
   } catch (error) {
     showNetworkError(error);
   }
+}
+
+
+// ---------- Search suggestions ----------
+
+// Waits until typing pauses for 250ms before searching, so we don't send a request per key.
+function handleInput() {
+  clearTimeout(suggest.timer);
+  const query = els.input.value.trim();
+  if (query.length < 2) {
+    closeSuggestions();
+    return;
+  }
+  suggest.timer = setTimeout(() => fetchSuggestions(query), 250);
+}
+
+// Fetches up to 5 matching places, cancelling any older request still in flight.
+async function fetchSuggestions(query) {
+  suggest.controller?.abort();
+  suggest.controller = new AbortController();
+  try {
+    const places = await searchPlaces(query, 5, suggest.controller.signal);
+    if (els.input.value.trim() !== query) return; // the user has typed more since
+    showSuggestions(places);
+  } catch (error) {
+    if (error.name !== 'AbortError') closeSuggestions(); // suggestions are optional, so fail quietly
+  }
+}
+
+// Draws the suggestion list under the search box.
+function showSuggestions(places) {
+  suggest.places = places;
+  suggest.active = -1;
+  if (!places.length) {
+    closeSuggestions();
+    return;
+  }
+  els.suggestions.innerHTML = places.map((place, i) => `
+    <li role="option" id="suggestion-${i}" aria-selected="false" data-index="${i}">
+      <span class="suggestion-name">${escapeHtml(place.name)}</span>
+      <span class="suggestion-region">${escapeHtml(placeRegion(place))}</span>
+    </li>`).join('');
+  els.suggestions.hidden = false;
+  els.input.setAttribute('aria-expanded', 'true');
+}
+
+// Hides the suggestion list and cancels anything pending.
+function closeSuggestions() {
+  clearTimeout(suggest.timer);
+  suggest.controller?.abort();
+  suggest.places = [];
+  suggest.active = -1;
+  els.suggestions.hidden = true;
+  els.input.setAttribute('aria-expanded', 'false');
+  els.input.removeAttribute('aria-activedescendant');
+}
+
+// Arrow keys move through suggestions, Enter picks one, Escape closes the list.
+function handleSuggestionKeys(event) {
+  if (els.suggestions.hidden) return;
+  const count = suggest.places.length;
+
+  if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+    event.preventDefault(); // stop the cursor jumping to the start/end of the text
+    const move = event.key === 'ArrowDown' ? 1 : -1;
+    highlightSuggestion((suggest.active + move + count) % count);
+  } else if (event.key === 'Enter' && suggest.active >= 0) {
+    event.preventDefault(); // pick the highlighted place instead of submitting the form
+    chooseSuggestion(suggest.active);
+  } else if (event.key === 'Escape') {
+    closeSuggestions();
+  }
+}
+
+// Highlights one suggestion and tells screen readers which one it is.
+function highlightSuggestion(index) {
+  suggest.active = index;
+  [...els.suggestions.children].forEach((li, i) => li.setAttribute('aria-selected', String(i === index)));
+  els.input.setAttribute('aria-activedescendant', `suggestion-${index}`);
+}
+
+// Loads the weather for the chosen suggestion.
+function chooseSuggestion(index) {
+  const place = suggest.places[index];
+  closeSuggestions();
+  if (place) loadPlace(place);
 }
 
 
@@ -249,7 +306,7 @@ function renderCurrent() {
 
   document.documentElement.dataset.sky = look.sky;
   els.placeName.textContent = [place.name, place.country].filter(Boolean).join(', ');
-  els.localTime.textContent = formatLocalTime(now.time);
+  els.localTime.textContent = [place.region, formatLocalTime(now.time)].filter(Boolean).join(' · '); // region tells the Springfields apart
   els.currentIcon.className = `current-icon ti ${look.icon}`;
   els.currentTemp.textContent = formatTemp(now.temperature_2m);
   els.currentCondition.textContent = look.label;
@@ -260,7 +317,7 @@ function renderCurrent() {
 
 // Draws the next 24 hours as an SVG line chart with rain-chance bars underneath.
 function renderHourly() {
-  const hours = getNext24Hours();
+  const hours = getNext24Hours(state.weather);
   const width = els.hourlyChart.clientWidth || 600;
   const height = 190;
   const pad = 20;
@@ -285,7 +342,7 @@ function renderHourly() {
     return `
       <circle class="chart-dot" cx="${x(i)}" cy="${y(h.temp)}" r="3.5"></circle>
       <text class="chart-temp" x="${x(i)}" y="${y(h.temp) - 12}">${formatTemp(h.temp)}</text>
-      <text class="chart-hour" x="${x(i)}" y="${126}">${i === 0 ? 'Now' : h.time}</text>
+      <text class="chart-hour" x="${x(i)}" y="126">${i === 0 ? 'Now' : h.time}</text>
       ${h.rain >= 10 ? `<text class="chart-rain" x="${x(i)}" y="180">${h.rain}%</text>` : ''}`;
   }).join('');
   const dry = hours.every((h) => h.rain < 10)
@@ -298,17 +355,6 @@ function renderHourly() {
       <polyline class="chart-line" points="${line}"></polyline>
       ${bars}${labels}${dry}
     </svg>`;
-}
-
-// Picks the 24 hourly readings starting from the current hour.
-function getNext24Hours() {
-  const { hourly, current } = state.weather;
-  const start = Math.max(0, hourly.time.indexOf(`${current.time.slice(0, 13)}:00`));
-  return hourly.time.slice(start, start + 24).map((time, i) => ({
-    time: time.slice(11, 16),
-    temp: hourly.temperature_2m[start + i],
-    rain: hourly.precipitation_probability[start + i] ?? 0,
-  }));
 }
 
 // Builds the 5-day row (index 0 is today, so it starts at 1).
@@ -364,14 +410,12 @@ function renderSunCard() {
   const { current, daily } = state.weather;
   const sunrise = daily.sunrise[0];
   const sunset = daily.sunset[0];
-  const progress = clamp((toMinutes(current.time) - toMinutes(sunrise)) / (toMinutes(sunset) - toMinutes(sunrise)), 0, 1);
-  const isUp = current.time >= sunrise && current.time <= sunset;
+  const { progress, isUp, daylightMinutes } = getSunPosition(current.time, sunrise, sunset);
 
   // The sun moves along a half circle: progress 0 = left end (sunrise), 1 = right end (sunset).
   const angle = Math.PI * (1 - progress);
   const sunX = 100 + 80 * Math.cos(angle);
   const sunY = 90 - 80 * Math.sin(angle);
-  const daylight = toMinutes(sunset) - toMinutes(sunrise);
 
   return `
     <article class="tile tile-sun">
@@ -383,56 +427,10 @@ function renderSunCard() {
       </svg>
       <div class="sun-times">
         <span><small>Sunrise</small>${sunrise.slice(11, 16)}</span>
-        <span class="tile-note">${Math.floor(daylight / 60)}h ${daylight % 60}m of daylight</span>
+        <span class="tile-note">${Math.floor(daylightMinutes / 60)}h ${daylightMinutes % 60}m of daylight</span>
         <span><small>Sunset</small>${sunset.slice(11, 16)}</span>
       </div>
     </article>`;
-}
-
-// Scores running conditions out of 100 and names the biggest problem.
-function getRunningScore(weather, air) {
-  const now = weather.current;
-  const nextHours = getNext24Hours().slice(0, 3);
-  const rainSoon = Math.max(...nextHours.map((h) => h.rain));
-  const feels = now.apparent_temperature;
-
-  const penalties = [
-    { reason: feels > 20 ? 'Too hot for a hard run' : 'Cold: wear layers', points: Math.min(60, Math.max(0, feels - 20, 8 - feels) * 4) },
-    { reason: 'Rain likely in the next few hours', points: now.precipitation > 0.2 || rainSoon > 60 ? 40 : rainSoon > 30 ? 20 : 0 },
-    { reason: 'Strong wind', points: now.wind_speed_10m > 40 ? 30 : now.wind_speed_10m > 25 ? 15 : 0 },
-    { reason: 'High UV: go early or late', points: now.uv_index >= 8 ? 20 : now.uv_index >= 6 ? 10 : 0 },
-    { reason: "Air quality isn't great", points: air?.european_aqi > 60 ? 30 : air?.european_aqi > 40 ? 15 : 0 },
-  ];
-
-  let score = 100 - penalties.reduce((sum, p) => sum + p.points, 0);
-  if (now.weather_code >= 95) score = Math.min(score, 10); // never recommend running in a thunderstorm
-
-  const worst = penalties.reduce((a, b) => (b.points > a.points ? b : a));
-  const rating = score >= 80 ? 'Great' : score >= 60 ? 'Good' : score >= 40 ? 'Fair' : 'Poor';
-  const reason = now.weather_code >= 95 ? 'Thunderstorm: stay inside'
-    : rating !== 'Great' ? worst.reason // only explain when something actually lowered the rating
-    : now.is_day ? 'Ideal conditions' : "Good conditions, but it's dark: wear lights";
-  return { score, rating, reason };
-}
-
-// Sums up today's rain: chance, expected amount and whether to take an umbrella.
-function getRainToday(daily) {
-  const chance = daily.precipitation_probability_max[0] ?? 0;
-  const mm = daily.precipitation_sum[0] ?? 0;
-  const note = chance >= 50 || mm >= 1 ? 'Take an umbrella.'
-    : chance >= 20 ? 'Small chance of a shower.'
-    : 'No umbrella needed.';
-  return { value: `${chance}% · ${mm.toFixed(1)} mm`, note };
-}
-
-// Converts a UV number into the standard WHO level.
-function uvLevel(uv) {
-  return uv < 3 ? 'Low' : uv < 6 ? 'Moderate' : uv < 8 ? 'High' : uv < 11 ? 'Very high' : 'Extreme';
-}
-
-// Converts a European AQI number into its official band.
-function aqiLevel(aqi) {
-  return aqi <= 20 ? 'Good' : aqi <= 40 ? 'Fair' : aqi <= 60 ? 'Moderate' : aqi <= 80 ? 'Poor' : aqi <= 100 ? 'Very poor' : 'Extremely poor';
 }
 
 // Shows a neutral message.
@@ -462,7 +460,7 @@ function showError(message) {
 function showNetworkError(error) {
   showError(navigator.onLine
     ? 'Something went wrong getting the weather. Try again in a moment.'
-    : "You're offline. Check your connection and try again.");
+    : "You're offline and this place hasn't been saved yet. Check your connection and try again.");
   console.error(error);
 }
 
@@ -472,19 +470,16 @@ function hideStatus() {
 }
 
 
-// ---------- Formatting ----------
+// ---------- Formatting (uses the chosen unit) ----------
 
 // Shows a Celsius value in the chosen unit.
 function formatTemp(celsius) {
-  const value = state.unit === 'fahrenheit' ? celsius * 9 / 5 + 32 : celsius;
-  return `${Math.round(value)}°`;
+  return formatTempIn(celsius, state.unit);
 }
 
-// Shows wind in km/h, or mph when Fahrenheit is chosen.
+// Shows wind in the chosen unit's usual scale.
 function formatWind(kmh) {
-  return state.unit === 'fahrenheit'
-    ? `${Math.round(kmh * 0.621371)} mph`
-    : `${Math.round(kmh)} km/h`;
+  return formatWindIn(kmh, state.unit);
 }
 
 // Formats the city's local time, e.g. "Tuesday, 06 October at 18:45".
@@ -492,21 +487,6 @@ function formatLocalTime(isoTime) {
   return new Date(isoTime).toLocaleString('en-ZA', {
     weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit',
   });
-}
-
-// Turns "2026-10-07" into "Wed" (noon avoids time zones shifting the day).
-function formatWeekday(isoDate) {
-  return new Date(`${isoDate}T12:00`).toLocaleDateString('en-ZA', { weekday: 'short' });
-}
-
-// Turns "2026-10-06T18:45" into minutes since midnight.
-function toMinutes(isoTime) {
-  return Number(isoTime.slice(11, 13)) * 60 + Number(isoTime.slice(14, 16));
-}
-
-// Keeps a number between min and max.
-function clamp(value, min, max) {
-  return Math.min(max, Math.max(min, value));
 }
 
 
@@ -559,6 +539,15 @@ function loadLastPlace() {
 // ---------- Start-up ----------
 
 els.form.addEventListener('submit', handleSearch);
+els.input.addEventListener('input', handleInput);
+els.input.addEventListener('keydown', handleSuggestionKeys);
+els.input.addEventListener('blur', closeSuggestions);
+// pointerdown fires before the input loses focus; cancelling it keeps the list open long enough to click
+els.suggestions.addEventListener('pointerdown', (event) => event.preventDefault());
+els.suggestions.addEventListener('click', (event) => {
+  const option = event.target.closest('[data-index]');
+  if (option) chooseSuggestion(Number(option.dataset.index));
+});
 els.locateButton.addEventListener('click', useMyLocation);
 els.unitButtons.forEach((button) => button.addEventListener('click', () => setUnit(button.dataset.unit)));
 els.themeToggle.addEventListener('click', toggleTheme);
@@ -577,3 +566,8 @@ setUnit(state.unit);
 const lastPlace = loadLastPlace();
 if (lastPlace?.latitude != null) loadPlace(lastPlace);
 else searchCity(DEFAULT_CITY);
+
+// Register the service worker, which makes the app installable and work offline.
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch((error) => console.warn('Service worker not registered', error));
+}

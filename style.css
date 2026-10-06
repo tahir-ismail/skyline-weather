@@ -82,9 +82,16 @@ p { margin: 0; }
 
 /* Search */
 .search { display: flex; gap: 10px; margin: clamp(24px, 6vw, 56px) 0 24px; }
+.search-field { position: relative; flex: 1; min-width: 0; display: flex; }
 .search input { flex: 1; min-width: 0; min-height: 52px; padding: 0 20px; background: transparent; border: 1.5px solid var(--line); border-radius: 999px; transition: border-color .2s; }
 .search input:hover { border-color: var(--muted); }
 .search input:focus { outline: none; border-color: var(--text); }
+.suggestions { position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: 10; margin: 0; padding: 4px 0; list-style: none; background: var(--bg); border: 1px solid var(--line); box-shadow: 0 12px 32px rgba(0, 0, 0, .12); }
+.suggestions li { display: flex; flex-direction: column; padding: 10px 20px; cursor: pointer; }
+.suggestions li[aria-selected="true"] { background: var(--surface); }
+@media (hover: hover) and (pointer: fine) { .suggestions li:hover { background: var(--surface); } }
+.suggestion-name { font-weight: 700; }
+.suggestion-region { font-size: .85rem; color: var(--muted); }
 .locate { flex: none; width: 52px; height: 52px; display: grid; place-items: center; border: 1.5px solid var(--line); border-radius: 999px; background: none; font-size: 1.3rem; color: var(--muted); cursor: pointer; transition: color .2s, border-color .2s, transform .2s var(--ease); }
 .locate:hover { color: var(--accent); border-color: var(--accent); }
 .locate:active { transform: scale(.94); }
