@@ -1,0 +1,114 @@
+/*
+  Matches the portfolio (tahir-ismail.github.io): same palette, fonts and shape system.
+  Square-cornered cards, pill-shaped buttons, one orange accent.
+*/
+:root {
+  color-scheme: light;
+  --bg: #f3f3f1;
+  --surface: #e8e8e5;
+  --text: #151515;
+  --muted: #5d5d59;
+  --line: rgba(21, 21, 21, .14);
+  --accent: #e5532b;
+  --on-accent: #151515;
+  --error-bg: #f6dcd4;
+  --display: "Cabinet Grotesk", "Arial Narrow", Arial, sans-serif;
+  --body: "Satoshi", "Segoe UI", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+  --ease: cubic-bezier(.16, 1, .3, 1);
+  --container: 880px;
+  --gutter: clamp(16px, 4vw, 48px);
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #121212;
+  --surface: #1c1c1b;
+  --text: #efefeb;
+  --muted: #a3a39d;
+  --line: rgba(239, 239, 235, .14);
+  --accent: #ee6a44;
+  --on-accent: #121212;
+  --error-bg: #3a1d15;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; min-height: 100vh; display: flex; flex-direction: column; background: var(--bg); color: var(--text); font: 400 1.0625rem/1.65 var(--body); -webkit-font-smoothing: antialiased; }
+main { flex: 1; }
+a { color: inherit; }
+button, input { font: inherit; color: inherit; }
+h1, h2 { margin: 0; font-family: var(--display); font-weight: 800; line-height: .95; letter-spacing: -.035em; }
+p { margin: 0; }
+[hidden] { display: none !important; }
+.container { width: min(100% - 2 * var(--gutter), var(--container)); margin-inline: auto; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+::selection { background: var(--accent); color: var(--on-accent); }
+
+/* Header */
+.navbar { height: 72px; display: flex; align-items: center; justify-content: space-between; }
+.logo { display: inline-flex; align-items: flex-end; gap: 3px; font: 800 1.5rem/1 var(--display); letter-spacing: -.04em; text-decoration: none; }
+.logo span { width: 7px; height: 7px; margin-bottom: 3px; background: var(--accent); transition: transform .4s var(--ease); }
+.logo:hover span { transform: rotate(90deg) scale(1.3); }
+.nav-tools { display: flex; align-items: center; gap: 8px; }
+.theme-toggle,
+.unit-toggle button { font: 400 .78rem/1 var(--mono); color: var(--muted); background: none; border: 1px solid var(--line); border-radius: 999px; padding: 8px 12px; cursor: pointer; transition: color .2s, border-color .2s, background .2s, transform .2s var(--ease); }
+.theme-toggle:hover,
+.unit-toggle button:hover { color: var(--text); border-color: var(--text); }
+.theme-toggle:active,
+.unit-toggle button:active { transform: scale(.96); }
+.unit-toggle { display: flex; }
+.unit-toggle button:first-child { border-radius: 999px 0 0 999px; }
+.unit-toggle button:last-child { border-radius: 0 999px 999px 0; margin-left: -1px; }
+.unit-toggle button[aria-pressed="true"] { background: var(--text); color: var(--bg); border-color: var(--text); }
+
+/* Search */
+.search { display: flex; gap: 10px; margin: clamp(24px, 6vw, 56px) 0 24px; }
+.search input { flex: 1; min-width: 0; min-height: 52px; padding: 0 20px; background: transparent; border: 1.5px solid var(--line); border-radius: 999px; transition: border-color .2s; }
+.search input:hover { border-color: var(--muted); }
+.search input:focus { outline: none; border-color: var(--text); }
+.button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 52px; padding: 0 26px; border-radius: 999px; border: 1.5px solid var(--text); background: var(--text); color: var(--bg); font-weight: 700; cursor: pointer; transition: background .25s, color .25s, border-color .25s, transform .25s var(--ease); }
+.button:hover { background: var(--accent); border-color: var(--accent); color: var(--on-accent); transform: translateY(-2px); }
+.button:active { transform: translateY(0) scale(.97); transition-duration: .08s; }
+
+/* Status line: doubles as the error banner */
+.status { margin: 0 0 20px;font: 400 .85rem/1.5 var(--mono); color: var(--muted); }
+.status.is-error { padding: 14px 16px; background: var(--error-bg); color: var(--text); border-left: 3px solid var(--accent); }
+
+/* Current conditions */
+.current { padding: clamp(20px, 4vw, 32px); background: var(--surface); }
+.current-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
+.current h1 { font-size: clamp(1.8rem, 5vw, 2.6rem); }
+.meta, .label, dt { font: 400 .78rem/1.5 var(--mono); color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+.meta { margin-top: 8px; }
+.current-icon { font-size: 2.6rem; color: var(--accent); }
+.current-temp { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 16px; margin: 20px 0 24px; }
+.temp { font: 800 clamp(4rem, 14vw, 6.5rem)/.85 var(--display); letter-spacing: -.05em; }
+.condition { font-size: 1.15rem; color: var(--muted); }
+.details { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; margin: 0; background: var(--line); border: 1px solid var(--line); }
+.details div { padding: 12px 14px; background: var(--bg); }
+.details dd { margin: 4px 0 0; font-weight: 700; font-size: 1.15rem; }
+
+/* 5-day forecast */
+.forecast { margin: 32px 0 48px; }
+.forecast .label { margin-bottom: 12px; }
+.forecast-list { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 1px; margin: 0; padding: 0; list-style: none; background: var(--line); border: 1px solid var(--line); }
+.forecast-list li { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 16px 8px; background: var(--bg); text-align: center; }
+.forecast-list .day { font: 500 .85rem/1 var(--mono); }
+.forecast-list i { font-size: 1.8rem; color: var(--accent); }
+.forecast-list .high { font-weight: 700; }
+.forecast-list .low { color: var(--muted); }
+
+.site-footer { padding: 24px 0 32px; border-top: 1px solid var(--line); font-size: .85rem; color: var(--muted); }
+
+/* Phones: five tiles get too cramped, so the row scrolls sideways instead of squashing */
+@media (max-width: 560px) {
+  .search .button { padding: 0 18px; }
+  .forecast-list { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: 96px; overflow-x: auto; scroll-snap-type: x mandatory; }
+  .forecast-list li { scroll-snap-align: start; }
+  .details dd { font-size: 1rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; }
+}

@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Skyline Weather</title>
+  <meta name="description" content="Search any city for current conditions and a 5-day forecast.">
+  <meta name="theme-color" content="#f3f3f1">
+
+  <!-- Apply the saved theme before the page paints, so dark-mode visitors don't see a white flash.
+       Uses the same "theme" key as the portfolio, so the choice carries over between the two sites. -->
+  <script>
+    try { if (localStorage.getItem('theme') === 'dark') document.documentElement.dataset.theme = 'dark'; } catch (e) {}
+  </script>
+
+  <link rel="preconnect" href="https://api.fontshare.com" crossorigin>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@500,700,800&f[]=satoshi@400,500,700&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap">
+  <!-- Tabler icons: one class per weather type (ti-sun, ti-cloud-rain, ...) -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3/dist/tabler-icons.min.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="container navbar">
+      <a class="logo" href="./">Skyline<span aria-hidden="true"></span></a>
+      <div class="nav-tools">
+        <!-- Unit toggle: a pressed/unpressed button pair is announced clearly by screen readers -->
+        <div class="unit-toggle" role="group" aria-label="Temperature unit">
+          <button type="button" data-unit="celsius" aria-pressed="true">°C</button>
+          <button type="button" data-unit="fahrenheit" aria-pressed="false">°F</button>
+        </div>
+        <button class="theme-toggle" type="button" aria-pressed="false">Dark</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- A real <form> means Enter submits the search for free, no extra key handling needed -->
+    <form class="search" id="search-form" role="search">
+      <label class="sr-only" for="city-input">City name</label>
+      <input id="city-input" name="city" type="text" placeholder="Cape Town" autocomplete="off" required>
+      <button class="button" type="submit"><i class="ti ti-search" aria-hidden="true"></i>Search</button>
+    </form>
+
+    <!-- aria-live makes screen readers announce loading, errors and new results as they change -->
+    <p class="status" id="status" aria-live="polite">Search for a city to see its weather.</p>
+
+    <section class="current" id="current" hidden aria-labelledby="place-name">
+      <div class="current-head">
+        <div>
+          <h1 id="place-name"></h1>
+          <p class="meta" id="local-time"></p>
+        </div>
+        <i class="current-icon ti" id="current-icon" aria-hidden="true"></i>
+      </div>
+      <div class="current-temp">
+        <span class="temp" id="current-temp"></span>
+        <span class="condition" id="current-condition"></span>
+      </div>
+      <dl class="details">
+        <div><dt>Feels like</dt><dd id="feels-like"></dd></div>
+        <div><dt>Humidity</dt><dd id="humidity"></dd></div>
+        <div><dt>Wind</dt><dd id="wind"></dd></div>
+      </dl>
+    </section>
+
+    <section class="forecast" id="forecast" hidden aria-label="5-day forecast">
+      <h2 class="label">Next 5 days</h2>
+      <ol class="forecast-list" id="forecast-list"></ol>
+    </section>
+  </main>
+
+  <footer class="container site-footer">
+    <p>Data from <a href="https://open-meteo.com/">Open-Meteo</a> · Built by <a href="https://tahir-ismail.github.io/">Tahir Ismail</a></p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
