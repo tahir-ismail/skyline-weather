@@ -83,7 +83,7 @@ p { margin: 0; }
 .current h1 { font-size: clamp(1.8rem, 5vw, 2.6rem); }
 .meta, .label, dt { font: 400 .78rem/1.5 var(--mono); color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
 .meta { margin-top: 8px; }
-.current-icon { font-size: 2.6rem; color: var(--accent); }
+.current-icon { display: inline-block; font-size: 2.6rem; color: var(--accent); }
 .current-temp { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 16px; margin: 20px 0 24px; }
 .temp { font: 800 clamp(4rem, 14vw, 6.5rem)/.85 var(--display); letter-spacing: -.05em; }
 .condition { font-size: 1.15rem; color: var(--muted); }
@@ -101,6 +101,41 @@ p { margin: 0; }
 .forecast-list .high { font-weight: 700; }
 .forecast-list .low { color: var(--muted); }
 
+/* Loading skeleton: fades in after 150ms so fast loads never flash it */
+.skeleton { animation: fade-in .2s 150ms both; }
+.skeleton-card { display: grid; gap: 14px; padding: clamp(20px, 4vw, 32px); background: var(--surface); }
+.skeleton-days { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; margin: 62px 0 48px; }
+.bone { display: block; height: 104px; background: var(--line); animation: pulse 1.2s ease-in-out infinite alternate; }
+.bone-title { width: 60%; height: 2.4rem; }
+.bone-meta { width: 30%; height: .8rem; }
+.bone-temp { width: 150px; height: 5rem; margin-top: 8px; }
+.bone-details { height: 64px; margin-top: 10px; }
+
+/* Results entrance: card rises in, then forecast tiles follow 40ms apart */
+.current.is-entering { animation: rise .3s var(--ease) both; }
+.forecast.is-entering li { animation: rise .3s var(--ease) both; }
+.forecast.is-entering li:nth-child(1) { animation-delay: 80ms; }
+.forecast.is-entering li:nth-child(2) { animation-delay: 120ms; }
+.forecast.is-entering li:nth-child(3) { animation-delay: 160ms; }
+.forecast.is-entering li:nth-child(4) { animation-delay: 200ms; }
+.forecast.is-entering li:nth-child(5) { animation-delay: 240ms; }
+
+/* Ambient motion on the main weather icon only: slow enough to notice, not to watch */
+.current-icon.ti-sun { animation: spin 24s linear infinite; }
+.current-icon.ti-cloud, .current-icon.ti-mist { animation: drift 4s ease-in-out infinite alternate; }
+.current-icon.ti-cloud-rain, .current-icon.ti-snowflake, .current-icon.ti-cloud-storm { animation: bob 2.4s ease-in-out infinite alternate; }
+
+/* City not found: quick shake on the search bar */
+.search.is-shaking { animation: shake .3s var(--ease); }
+
+@keyframes fade-in { from { opacity: 0; } }
+@keyframes pulse { to { opacity: .45; } }
+@keyframes rise { from { opacity: 0; transform: translateY(12px); } }
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes drift { from { transform: translateX(-3px); } to { transform: translateX(3px); } }
+@keyframes bob { from { transform: translateY(-2px); } to { transform: translateY(2px); } }
+@keyframes shake { 20% { transform: translateX(-6px); } 40% { transform: translateX(6px); } 60% { transform: translateX(-4px); } 80% { transform: translateX(3px); } }
+
 .site-footer { padding: 24px 0 32px; border-top: 1px solid var(--line); font-size: .85rem; color: var(--muted); }
 
 /* Phones: five tiles get too cramped, so the row scrolls sideways instead of squashing */
@@ -109,8 +144,12 @@ p { margin: 0; }
   .forecast-list { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: 96px; overflow-x: auto; scroll-snap-type: x mandatory; }
   .forecast-list li { scroll-snap-align: start; }
   .details dd { font-size: 1rem; }
+  .skeleton-days { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: 96px; overflow: hidden; }
 }
 
+/* Reduced motion: keep the fades (they help), drop anything that moves */
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; }
+  .current.is-entering, .forecast.is-entering li { animation-name: fade-in; }
+  .current-icon, .search.is-shaking { animation: none !important; }
 }

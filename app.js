@@ -15,6 +15,7 @@ const els = {
   form: document.getElementById('search-form'),
   input: document.getElementById('city-input'),
   status: document.getElementById('status'),
+  skeleton: document.getElementById('skeleton'),
   current: document.getElementById('current'),
   placeName: document.getElementById('place-name'),
   localTime: document.getElementById('local-time'),
@@ -111,19 +112,20 @@ async function handleSearch(event) {
 
 // Looks up a city and shows its weather, or an error.
 async function searchCity(city) {
-  showStatus(`Loading weather for ${city}…`);
+  showLoading(city);
 
   try {
     const place = await geocodeCity(city);
     if (!place) {
       showError(`We couldn't find "${city}". Check the spelling and try again.`);
+      replayAnimation(els.form, 'is-shaking');
       return;
     }
 
     state.place = place;
     state.weather = await getForecast(place.latitude, place.longitude);
     saveSetting('lastCity', place.name);
-    render();
+    render(true);
   } catch (error) {
     showError(navigator.onLine
       ? 'Something went wrong getting the weather. Try again in a moment.'
@@ -135,12 +137,25 @@ async function searchCity(city) {
 
 // ---------- Rendering ----------
 
-// Redraws the results from state.
-function render() {
+// Redraws the results from state; animates them in only after a new search.
+function render(animate = false) {
   if (!state.place || !state.weather) return;
   hideStatus();
+  els.skeleton.hidden = true;
   renderCurrent();
   renderForecast();
+
+  [els.current, els.forecast].forEach((el) => {
+    if (animate) replayAnimation(el, 'is-entering');
+    else el.classList.remove('is-entering'); // unit changes swap numbers instantly
+  });
+}
+
+// Restarts a CSS animation by removing and re-adding its class.
+function replayAnimation(el, className) {
+  el.classList.remove(className);
+  void el.offsetWidth; // forces the browser to notice the removal before re-adding
+  el.classList.add(className);
 }
 
 // Fills in the big "right now" card.
@@ -179,17 +194,27 @@ function renderForecast() {
   els.forecast.hidden = false;
 }
 
-// Shows a neutral message, e.g. while loading.
+// Shows a neutral message.
 function showStatus(message) {
   els.status.textContent = message;
-  els.status.classList.remove('is-error');
+  els.status.classList.remove('is-error', 'sr-only');
   els.status.hidden = false;
+}
+
+// Swaps the results for the skeleton; the loading text stays for screen readers only.
+function showLoading(city) {
+  showStatus(`Loading weather for ${city}…`);
+  els.status.classList.add('sr-only');
+  els.current.hidden = true;
+  els.forecast.hidden = true;
+  els.skeleton.hidden = false;
 }
 
 // Shows an error and hides old results so they can't be mistaken for the new city.
 function showError(message) {
   showStatus(message);
   els.status.classList.add('is-error');
+  els.skeleton.hidden = true;
   els.current.hidden = true;
   els.forecast.hidden = true;
 }

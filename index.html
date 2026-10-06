@@ -48,6 +48,19 @@
     <!-- aria-live makes screen readers announce loading, errors and new results as they change -->
     <p class="status" id="status" aria-live="polite">Search for a city to see its weather.</p>
 
+    <!-- Grey placeholder shapes shown while the weather loads -->
+    <div class="skeleton" id="skeleton" hidden aria-hidden="true">
+      <div class="skeleton-card">
+        <span class="bone bone-title"></span>
+        <span class="bone bone-meta"></span>
+        <span class="bone bone-temp"></span>
+        <span class="bone bone-details"></span>
+      </div>
+      <div class="skeleton-days">
+        <span class="bone"></span><span class="bone"></span><span class="bone"></span><span class="bone"></span><span class="bone"></span>
+      </div>
+    </div>
+
     <section class="current" id="current" hidden aria-labelledby="place-name">
       <div class="current-head">
         <div>
