@@ -34,6 +34,22 @@
   --error-bg: #3a1c1f;
 }
 
+/* Weather colour schemes: the current conditions recolour the cards and accent (set by renderCurrent) */
+:root[data-sky="clear"]  { --surface: #f8e8cf; --accent: #b25e00; }
+:root[data-sky="cloudy"] { --surface: #e3e7eb; --accent: #4f5f6f; }
+:root[data-sky="rain"]   { --surface: #dbe5ee; --accent: #2f6690; }
+:root[data-sky="storm"]  { --surface: #e3dff0; --accent: #57479a; }
+:root[data-sky="snow"]   { --surface: #eaf1f8; --accent: #2f7ab8; }
+:root[data-sky="fog"]    { --surface: #e7e7e2; --accent: #5f665e; }
+:root[data-sky="night"]  { --surface: #dfe2f2; --accent: #3a4a9c; }
+:root[data-theme="dark"][data-sky="clear"]  { --surface: #2b2214; --accent: #f2a540; }
+:root[data-theme="dark"][data-sky="cloudy"] { --surface: #1c2228; --accent: #a3b1bf; }
+:root[data-theme="dark"][data-sky="rain"]   { --surface: #142330; --accent: #6eaadb; }
+:root[data-theme="dark"][data-sky="storm"]  { --surface: #1e1a30; --accent: #a592f2; }
+:root[data-theme="dark"][data-sky="snow"]   { --surface: #18232e; --accent: #9ccaf0; }
+:root[data-theme="dark"][data-sky="fog"]    { --surface: #21231f; --accent: #b4b8ae; }
+:root[data-theme="dark"][data-sky="night"]  { --surface: #151b33; --accent: #93a4ff; }
+
 * { box-sizing: border-box; }
 body { margin: 0; min-height: 100vh; display: flex; flex-direction: column; background: var(--bg); color: var(--text); font: 400 1.0625rem/1.65 var(--body); -webkit-font-smoothing: antialiased; }
 main { flex: 1; }
@@ -69,6 +85,9 @@ p { margin: 0; }
 .search input { flex: 1; min-width: 0; min-height: 52px; padding: 0 20px; background: transparent; border: 1.5px solid var(--line); border-radius: 999px; transition: border-color .2s; }
 .search input:hover { border-color: var(--muted); }
 .search input:focus { outline: none; border-color: var(--text); }
+.locate { flex: none; width: 52px; height: 52px; display: grid; place-items: center; border: 1.5px solid var(--line); border-radius: 999px; background: none; font-size: 1.3rem; color: var(--muted); cursor: pointer; transition: color .2s, border-color .2s, transform .2s var(--ease); }
+.locate:hover { color: var(--accent); border-color: var(--accent); }
+.locate:active { transform: scale(.94); }
 .button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 52px; padding: 0 26px; border-radius: 999px; border: 1.5px solid var(--text); background: var(--text); color: var(--bg); font-weight: 700; cursor: pointer; transition: background .25s, color .25s, border-color .25s, transform .25s var(--ease); }
 .button:hover { background: var(--accent); border-color: var(--accent); color: var(--on-accent); transform: translateY(-2px); }
 .button:active { transform: translateY(0) scale(.97); transition-duration: .08s; }
@@ -78,6 +97,7 @@ p { margin: 0; }
 .status.is-error { padding: 14px 16px; background: var(--error-bg); color: var(--text); border-left: 3px solid var(--error); }
 
 /* Current conditions */
+.current, .tile { transition: background-color .5s ease; }
 .current { padding: clamp(20px, 4vw, 32px); background: var(--surface); }
 .current-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
 .current h1 { font-size: clamp(1.8rem, 5vw, 2.6rem); }
@@ -101,18 +121,58 @@ p { margin: 0; }
 .forecast-list .high { font-weight: 700; }
 .forecast-list .low { color: var(--muted); }
 
+/* Next 24 hours chart */
+.hourly { margin-top: 32px; }
+.hourly .label { margin-bottom: 12px; }
+.chart { border: 1px solid var(--line); padding: 8px 0 4px; }
+.chart svg { display: block; overflow: visible; }
+.chart-line { fill: none; stroke: var(--accent); stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; transition: stroke .5s ease; }
+.chart-area { fill: var(--accent); opacity: .1; }
+.chart-dot { fill: var(--bg); stroke: var(--accent); stroke-width: 2; }
+.chart-bar { fill: var(--accent); opacity: .35; }
+.chart-temp, .chart-hour, .chart-rain { text-anchor: middle; font-family: var(--mono); font-size: 12px; }
+.chart-temp { fill: var(--text); font-weight: 500; }
+.chart-hour, .chart-rain { fill: var(--muted); }
+
+.rain-chance { display: inline-flex; align-items: center; gap: 2px; font: 400 .78rem/1 var(--mono); color: var(--muted); }
+.forecast-list .rain-chance i { font-size: .9rem; color: var(--muted); }
+
+/* Today cards */
+.today { margin: 0 0 48px; }
+.today .label { margin-bottom: 12px; }
+.today-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.tile { display: flex; flex-direction: column; gap: 6px; padding: 18px; background: var(--surface); }
+.tile .label { display: flex; align-items: center; gap: 6px; margin: 0 0 4px; }
+.tile .label i { font-size: 1.1rem; color: var(--accent); }
+.tile-value { font: 800 1.6rem/1.1 var(--display); letter-spacing: -.02em; }
+.tile-note { font-size: .9rem; color: var(--muted); }
+.tile-sun { grid-column: span 2; }
+.sun-arc { width: 100%; max-width: 320px; margin: 4px auto 0; display: block; }
+.arc-track { fill: none; stroke: var(--muted); stroke-width: 1.5; stroke-dasharray: 3 5; }
+.arc-horizon { stroke: var(--line); stroke-width: 1.5; }
+.arc-sun { fill: var(--accent); }
+.arc-sun.is-down { fill: var(--muted); opacity: .5; }
+.sun-times { display: flex; justify-content: space-between; align-items: flex-end; gap: 8px; text-align: center; }
+.sun-times > span:not(.tile-note) { display: flex; flex-direction: column; font-weight: 700; font-size: 1.1rem; }
+.sun-times small { font: 400 .7rem/1.5 var(--mono); color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+
 /* Loading skeleton: fades in after 150ms so fast loads never flash it */
 .skeleton { animation: fade-in .2s 150ms both; }
 .skeleton-card { display: grid; gap: 14px; padding: clamp(20px, 4vw, 32px); background: var(--surface); }
 .skeleton-days { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; margin: 62px 0 48px; }
+.skeleton > .skeleton-days { order: 3; }
+.skeleton { display: flex; flex-direction: column; }
 .bone { display: block; height: 104px; background: var(--line); animation: pulse 1.2s ease-in-out infinite alternate; }
 .bone-title { width: 60%; height: 2.4rem; }
 .bone-meta { width: 30%; height: .8rem; }
 .bone-temp { width: 150px; height: 5rem; margin-top: 8px; }
 .bone-details { height: 64px; margin-top: 10px; }
+.bone-chart { height: 190px; margin-top: 62px; }
 
 /* Results entrance: card rises in, then forecast tiles follow 40ms apart */
-.current.is-entering { animation: rise .3s var(--ease) both; }
+.current.is-entering, .hourly.is-entering, .today.is-entering { animation: rise .3s var(--ease) both; }
+.hourly.is-entering { animation-delay: 60ms; }
+.today.is-entering { animation-delay: 200ms; }
 .forecast.is-entering li { animation: rise .3s var(--ease) both; }
 .forecast.is-entering li:nth-child(1) { animation-delay: 80ms; }
 .forecast.is-entering li:nth-child(2) { animation-delay: 120ms; }
@@ -141,6 +201,9 @@ p { margin: 0; }
 /* Phones: five tiles get too cramped, so the row scrolls sideways instead of squashing */
 @media (max-width: 560px) {
   .search .button { padding: 0 18px; }
+  .today-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .tile { padding: 14px; }
+  .tile-value { font-size: 1.25rem; }
   .forecast-list { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: 96px; overflow-x: auto; scroll-snap-type: x mandatory; }
   .forecast-list li { scroll-snap-align: start; }
   .details dd { font-size: 1rem; }
@@ -150,6 +213,6 @@ p { margin: 0; }
 /* Reduced motion: keep the fades (they help), drop anything that moves */
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; }
-  .current.is-entering, .forecast.is-entering li { animation-name: fade-in; }
+  .current.is-entering, .hourly.is-entering, .today.is-entering, .forecast.is-entering li { animation-name: fade-in; }
   .current-icon, .search.is-shaking { animation: none !important; }
 }

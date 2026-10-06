@@ -42,11 +42,12 @@
     <form class="search" id="search-form" role="search">
       <label class="sr-only" for="city-input">City name</label>
       <input id="city-input" name="city" type="text" placeholder="Cape Town" autocomplete="off" required>
+      <button class="locate" id="locate-button" type="button" aria-label="Use my location"><i class="ti ti-current-location" aria-hidden="true"></i></button>
       <button class="button" type="submit"><i class="ti ti-search" aria-hidden="true"></i>Search</button>
     </form>
 
     <!-- aria-live makes screen readers announce loading, errors and new results as they change -->
-    <p class="status" id="status" aria-live="polite">Search for a city to see its weather.</p>
+    <p class="status" id="status" aria-live="polite">Loading weather…</p>
 
     <!-- Grey placeholder shapes shown while the weather loads -->
     <div class="skeleton" id="skeleton" hidden aria-hidden="true">
@@ -56,6 +57,7 @@
         <span class="bone bone-temp"></span>
         <span class="bone bone-details"></span>
       </div>
+      <span class="bone bone-chart"></span>
       <div class="skeleton-days">
         <span class="bone"></span><span class="bone"></span><span class="bone"></span><span class="bone"></span><span class="bone"></span>
       </div>
@@ -80,14 +82,24 @@
       </dl>
     </section>
 
+    <section class="hourly" id="hourly" hidden aria-label="Next 24 hours">
+      <h2 class="label">Next 24 hours</h2>
+      <div class="chart" id="hourly-chart"></div>
+    </section>
+
     <section class="forecast" id="forecast" hidden aria-label="5-day forecast">
       <h2 class="label">Next 5 days</h2>
       <ol class="forecast-list" id="forecast-list"></ol>
     </section>
+
+    <section class="today" id="today" hidden aria-label="Today's conditions">
+      <h2 class="label">Today</h2>
+      <div class="today-grid" id="today-grid"></div>
+    </section>
   </main>
 
   <footer class="container site-footer">
-    <p>Data from <a href="https://open-meteo.com/">Open-Meteo</a> · Built by <a href="https://tahir-ismail.github.io/">Tahir Ismail</a></p>
+    <p>Data from <a href="https://open-meteo.com/">Open-Meteo</a> · <a href="https://github.com/tahir-ismail/skyline-weather">View code</a> · Built by <a href="https://tahir-ismail.github.io/">Tahir Ismail</a></p>
   </footer>
 
   <script src="app.js"></script>
