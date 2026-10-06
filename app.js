@@ -248,7 +248,7 @@ function applyTheme(theme) {
   els.themeToggle.textContent = isDark ? 'Light' : 'Dark';
   els.themeToggle.setAttribute('aria-pressed', String(isDark));
   els.themeToggle.setAttribute('aria-label', isDark ? 'Switch to light mode' : 'Switch to dark mode');
-  els.themeColor.setAttribute('content', isDark ? '#121212' : '#f3f3f1');
+  els.themeColor.setAttribute('content', isDark ? '#0d141b' : '#f2f5f8');
 }
 
 // Flips the theme and remembers it (same key as the portfolio).

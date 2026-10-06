@@ -1,17 +1,18 @@
 /*
-  Matches the portfolio (tahir-ismail.github.io): same palette, fonts and shape system.
-  Square-cornered cards, pill-shaped buttons, one orange accent.
+  Shares the portfolio's fonts and shape system (square cards, pill buttons),
+  with its own palette: cool greys and one sky-blue accent.
 */
 :root {
   color-scheme: light;
-  --bg: #f3f3f1;
-  --surface: #e8e8e5;
-  --text: #151515;
-  --muted: #5d5d59;
-  --line: rgba(21, 21, 21, .14);
-  --accent: #e5532b;
-  --on-accent: #151515;
-  --error-bg: #f6dcd4;
+  --bg: #f2f5f8;
+  --surface: #e2e9f0;
+  --text: #0f1a24;
+  --muted: #536170;
+  --line: rgba(15, 26, 36, .14);
+  --accent: #1668c4;
+  --on-accent: #ffffff;
+  --error: #c43d3d;
+  --error-bg: #f8e1e1;
   --display: "Cabinet Grotesk", "Arial Narrow", Arial, sans-serif;
   --body: "Satoshi", "Segoe UI", system-ui, sans-serif;
   --mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
@@ -22,14 +23,15 @@
 
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --bg: #121212;
-  --surface: #1c1c1b;
-  --text: #efefeb;
-  --muted: #a3a39d;
-  --line: rgba(239, 239, 235, .14);
-  --accent: #ee6a44;
-  --on-accent: #121212;
-  --error-bg: #3a1d15;
+  --bg: #0d141b;
+  --surface: #16212c;
+  --text: #e8eef4;
+  --muted: #9aa8b6;
+  --line: rgba(232, 238, 244, .14);
+  --accent: #5aa9f5;
+  --on-accent: #0d141b;
+  --error: #ef7b7b;
+  --error-bg: #3a1c1f;
 }
 
 * { box-sizing: border-box; }
@@ -73,7 +75,7 @@ p { margin: 0; }
 
 /* Status line: doubles as the error banner */
 .status { margin: 0 0 20px;font: 400 .85rem/1.5 var(--mono); color: var(--muted); }
-.status.is-error { padding: 14px 16px; background: var(--error-bg); color: var(--text); border-left: 3px solid var(--accent); }
+.status.is-error { padding: 14px 16px; background: var(--error-bg); color: var(--text); border-left: 3px solid var(--error); }
 
 /* Current conditions */
 .current { padding: clamp(20px, 4vw, 32px); background: var(--surface); }
