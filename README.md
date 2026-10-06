@@ -13,7 +13,7 @@ Search any city for its current weather, the next 24 hours, a five-day forecast 
 - **Colours that follow the weather:** sunny, cloudy, rain, storm, snow, fog and night each have their own scheme
 - **Next 24 hours** chart: temperature line with rain-chance bars
 - Five-day forecast with highs, lows and rain chance
-- **Today** cards: sunrise/sunset arc, running conditions score, UV index, air quality and pollen
+- **Today** cards: sunrise/sunset arc, running conditions score, UV index, air quality and rain today
 - °C/°F switch (wind changes between km/h and mph with it)
 - Light and dark mode
 - Remembers your last place, unit and theme between visits
@@ -47,7 +47,7 @@ Search any city for its current weather, the next 24 hours, a five-day forecast 
 - **Errors replace old results:** a failed search hides the previous city's weather so it can't be mistaken for the new one.
 - **Safe storage:** `localStorage` calls are wrapped in `try/catch`, so the app still works if the browser blocks storage (for example in private mode).
 - **Air quality can fail without breaking the page:** it's extra information, so `getAirQuality()` returns `null` on errors and the cards say "No data" instead of the whole search failing.
-- **Honest about missing data:** pollen only exists for Europe (CAMS), so other regions show "No data" rather than a made-up value.
+- **Only show data that works everywhere:** a pollen card was tried, but Open-Meteo only has pollen for Europe, so most visitors saw "No data". It was swapped for a rain card that works worldwide.
 - **Charts drawn by hand in SVG:** a library would be bigger than the whole app. The chart is redrawn on resize so labels never squash on phones.
 - **Accessible by default:** a real `<form>` (Enter works), `aria-live` status messages, `aria-pressed` toggle buttons and screen-reader labels for weather icons.
 

@@ -6,7 +6,6 @@ const FORECAST_URL = 'https://api.open-meteo.com/v1/forecast';
 const AIR_QUALITY_URL = 'https://air-quality-api.open-meteo.com/v1/air-quality';
 const REVERSE_GEOCODING_URL = 'https://api.bigdatacloud.net/data/reverse-geocode-client';
 const DEFAULT_CITY = 'Cape Town';
-const POLLEN_TYPES = ['alder', 'birch', 'grass', 'mugwort', 'olive', 'ragweed'];
 
 // Everything the screen is drawn from.
 const state = {
@@ -114,7 +113,7 @@ async function getForecast(latitude, longitude) {
     longitude,
     current: 'temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,weather_code,is_day,uv_index,precipitation',
     hourly: 'temperature_2m,precipitation_probability',
-    daily: 'weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,uv_index_max,sunrise,sunset',
+    daily: 'weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum,uv_index_max,sunrise,sunset',
     timezone: 'auto',
     forecast_days: 6,
   });
@@ -124,13 +123,13 @@ async function getForecast(latitude, longitude) {
   return response.json();
 }
 
-// Gets air quality and pollen. Returns null on failure so the rest of the page still loads.
+// Gets air quality. Returns null on failure so the rest of the page still loads.
 async function getAirQuality(latitude, longitude) {
   try {
     const params = new URLSearchParams({
       latitude,
       longitude,
-      current: ['european_aqi', ...POLLEN_TYPES.map((type) => `${type}_pollen`)].join(','),
+      current: 'european_aqi',
       timezone: 'auto',
     });
     const response = await fetch(`${AIR_QUALITY_URL}?${params}`);
@@ -331,14 +330,14 @@ function renderForecast() {
   }).join('');
 }
 
-// Builds the "Today" cards: sun, running, UV, air quality and pollen.
+// Builds the "Today" cards: sun, running, UV, air quality and rain.
 function renderToday() {
   const { weather, air } = state;
   const run = getRunningScore(weather, air);
   const uvNow = Math.round(weather.current.uv_index ?? 0);
   const uvMax = Math.round(weather.daily.uv_index_max[0] ?? 0);
   const aqi = air?.european_aqi;
-  const pollen = getPollen(air);
+  const rain = getRainToday(weather.daily);
 
   els.todayGrid.innerHTML = `
     ${renderSunCard()}
@@ -347,9 +346,7 @@ function renderToday() {
     ${aqi == null
       ? tile('ti-wind', 'Air quality', 'No data', 'Air quality data is unavailable right now.')
       : tile('ti-wind', 'Air quality', `${Math.round(aqi)} · ${aqiLevel(aqi)}`, 'European AQI: lower is better.')}
-    ${pollen
-      ? tile('ti-plant', 'Pollen', pollen.level, pollen.note)
-      : tile('ti-plant', 'Pollen', 'No data', 'Pollen data is only available in Europe.')}`;
+    ${tile('ti-umbrella', 'Rain today', rain.value, rain.note)}`;
 }
 
 // Returns the HTML for one small "Today" card.
@@ -418,19 +415,14 @@ function getRunningScore(weather, air) {
   return { score, rating, reason };
 }
 
-// Finds the strongest pollen type, or null where there's no pollen data.
-function getPollen(air) {
-  if (!air) return null;
-  const readings = POLLEN_TYPES
-    .map((type) => ({ type, value: air[`${type}_pollen`] }))
-    .filter((r) => r.value != null);
-  if (!readings.length) return null;
-
-  const top = readings.reduce((a, b) => (b.value > a.value ? b : a));
-  // Rough grains/m³ bands; real thresholds vary by pollen type.
-  const level = top.value < 10 ? 'Low' : top.value < 50 ? 'Moderate' : top.value < 200 ? 'High' : 'Very high';
-  return top.value < 1 ? { level: 'None', note: 'No pollen in the air right now.' }
-    : { level, note: `Mostly ${top.type} pollen right now.` };
+// Sums up today's rain: chance, expected amount and whether to take an umbrella.
+function getRainToday(daily) {
+  const chance = daily.precipitation_probability_max[0] ?? 0;
+  const mm = daily.precipitation_sum[0] ?? 0;
+  const note = chance >= 50 || mm >= 1 ? 'Take an umbrella.'
+    : chance >= 20 ? 'Small chance of a shower.'
+    : 'No umbrella needed.';
+  return { value: `${chance}% · ${mm.toFixed(1)} mm`, note };
 }
 
 // Converts a UV number into the standard WHO level.
